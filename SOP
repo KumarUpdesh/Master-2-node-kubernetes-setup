@@ -1,0 +1,91 @@
+Creating a Kubernetes cluster with one master node and two worker nodes involves several steps. Below is a guide to setting up such a cluster using kubeadm. This example assumes you have three machines (or virtual machines) with Ubuntu installed.
+
+Prerequisites
+Three machines (one master and two workers) with Ubuntu.
+Each machine should have a unique hostname.
+All machines should be able to communicate with each other.
+Swap should be disabled on all machines.
+Docker installed on all machines.
+Step-by-Step Guide
+Step 1: Install Docker
+
+Install Docker on all three machines:
+
+bash
+Copy code
+sudo apt update
+sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+sudo apt update
+sudo apt install -y docker-ce
+sudo systemctl start docker
+sudo systemctl enable docker
+Step 2: Install Kubernetes Components
+
+Install kubeadm, kubelet, and kubectl on all three machines:
+
+bash
+Copy code
+sudo apt update
+sudo apt install -y apt-transport-https ca-certificates curl
+curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+sudo bash -c 'cat <<EOF >/etc/apt/sources.list.d/kubernetes.list
+deb https://apt.kubernetes.io/ kubernetes-xenial main
+EOF'
+sudo apt update
+sudo apt install -y kubelet kubeadm kubectl
+sudo apt-mark hold kubelet kubeadm kubectl
+Step 3: Disable Swap
+
+Disable swap on all machines:
+
+bash
+Copy code
+sudo swapoff -a
+sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+Step 4: Initialize the Master Node
+
+Run the following command on the master node to initialize the cluster:
+
+bash
+Copy code
+sudo kubeadm init --pod-network-cidr=192.168.0.0/16
+After the command completes, you will see a kubeadm join command in the output. Save this command as it will be used to join the worker nodes to the cluster.
+
+Step 5: Configure kubectl on the Master Node
+
+Run the following commands on the master node to set up kubectl:
+
+bash
+Copy code
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+Step 6: Apply a Pod Network
+
+Apply a pod network to the cluster. We'll use Calico in this example:
+
+bash
+Copy code
+kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+Step 7: Join Worker Nodes to the Cluster
+
+On each worker node, run the kubeadm join command that was output from the kubeadm init command on the master node. The command will look similar to this:
+
+bash
+Copy code
+sudo kubeadm join <master-ip>:6443 --token <token> --discovery-token-ca-cert-hash sha256:<hash>
+Replace <master-ip>, <token>, and <hash> with the actual values from the kubeadm init output.
+
+Step 8: Verify the Cluster
+
+On the master node, run the following command to verify that all nodes have joined the cluster:
+
+bash
+Copy code
+kubectl get nodes
+You should see the master node and the two worker nodes listed as Ready.
+
+Summary
+You've now set up a Kubernetes cluster with one master node and two worker nodes. You can deploy applications to this cluster using kubectl and manage the cluster resources as needed.
